@@ -1,0 +1,8 @@
+{
+  "appId": "com.mario.chatseguro",
+  "appName": "Chat seguro",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

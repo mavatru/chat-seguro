@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chat seguro</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#e8edf1;--panel:#f7f9fb;--ink:#12202b;--mute:#5d6f7c;--line:#c9d3db;--acc:#3a3ad6;--onacc:#fff;--mine:#3a3ad6;--theirs:#dde4ea;--chip:#f4c430;--chipink:#2a2100;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e161d;--panel:#16212a;--ink:#e8eef2;--mute:#8da0ad;--line:#2a3945;--acc:#8b8bff;--onacc:#0e161d;--mine:#4b4be0;--theirs:#243441}}
+:root[data-theme="dark"]{--bg:#0e161d;--panel:#16212a;--ink:#e8eef2;--mute:#8da0ad;--line:#2a3945;--acc:#8b8bff;--onacc:#0e161d;--mine:#4b4be0;--theirs:#243441}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:16px;line-height:1.45}
+main{max-width:560px;height:100%;margin:0 auto;padding:18px;display:flex;flex-direction:column;gap:14px}
+h1{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin:0}
+p{margin:0;color:var(--mute)}
+section{display:flex;flex-direction:column;gap:14px;min-height:0}
+section[hidden],[hidden]{display:none!important}
+.row{display:flex;gap:10px}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:13px 16px;background:var(--acc);color:var(--onacc);cursor:pointer;flex:1}
+button.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--chip);outline-offset:2px}
+label{font-weight:600;font-size:.95rem}
+textarea,input[type=text]{font:inherit;width:100%;border:1.5px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);padding:11px 12px}
+textarea{resize:none;height:96px;font-family:ui-monospace,Menlo,monospace;font-size:.78rem;word-break:break-all}
+textarea.code{background:var(--chip);color:var(--chipink);border-color:transparent}
+.step{display:flex;flex-direction:column;gap:8px}
+.st{font-size:.9rem;color:var(--mute)}
+#chat{flex:1}
+#log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px 2px}
+.m{max-width:82%;padding:9px 13px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere}
+.m.yo{align-self:flex-end;background:var(--mine);color:#fff;border-bottom-right-radius:4px}
+.m.el{align-self:flex-start;background:var(--theirs);border-bottom-left-radius:4px}
+.m.sys{align-self:center;background:none;color:var(--mute);font-size:.85rem;text-align:center}
+.m img,.m video{display:block;max-width:100%;max-height:300px;border-radius:10px}
+.m audio{display:block;width:min(240px,100%)}
+.m small{display:block;opacity:.8;font-size:.8rem;margin-top:4px}
+#f{display:flex;gap:8px;align-items:center}
+#f input{flex:1;min-width:0}
+#f button{flex:0 0 auto}
+.ic{width:44px;height:44px;padding:0;display:grid;place-items:center}
+.ic.rec{background:#d63030;color:#fff;border-color:#d63030}
+#rt{font-variant-numeric:tabular-nums;font-weight:600;color:#d63030}
+</style>
+</head>
+<body>
+<main>
+<h1>Chat seguro</h1>
+
+<section id="inicio">
+<p>Conversación entre dos personas, de dispositivo a dispositivo. Sin servidor para los mensajes y con cifrado de extremo a extremo. Para entrar se intercambian dos códigos.</p>
+<div class="row"><button id="bCrear">Crear chat</button><button id="bUnir" class="alt">Tengo un código</button></div>
+</section>
+
+<section id="crear" hidden>
+<div class="step"><label>1. Envía este código a la otra persona</label>
+<textarea id="cOferta" class="code" readonly placeholder="Generando…"></textarea>
+<button id="copiarO" class="alt">Copiar código</button></div>
+<div class="step"><label for="cResp">2. Pega aquí el código que te devuelva</label>
+<textarea id="cResp" placeholder="Código de respuesta"></textarea>
+<button id="bConectar">Conectar</button></div>
+<p id="st" class="st"></p>
+</section>
+
+<section id="unir" hidden>
+<div class="step"><label for="cIn">1. Pega el código que recibiste</label>
+<textarea id="cIn" placeholder="Código de invitación"></textarea>
+<button id="bResp">Generar respuesta</button></div>
+<div class="step" id="rBox" hidden><label>2. Devuelve este código a quien te invitó</label>
+<textarea id="cRes" class="code" readonly></textarea>
+<button id="copiarR" class="alt">Copiar código</button></div>
+<p id="st2" class="st"></p>
+</section>
+
+<section id="chat" hidden>
+<div id="log" aria-live="polite"></div>
+<form id="f" onsubmit="return false">
+<button type="button" class="ic alt" id="adj" aria-label="Adjuntar imagen, video o audio"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12l-8.5 8.5a5 5 0 0 1-7-7L14 5a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 8"/></svg></button>
+<button type="button" class="ic alt" id="mic" aria-label="Grabar nota de voz"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+<span id="rt" hidden>0:00</span>
+<input id="txt" type="text" autocomplete="off" placeholder="Escribe un mensaje">
+<button id="env" type="submit">Enviar</button>
+</form>
+<input id="fi" type="file" accept="image/*,video/*,audio/*" multiple hidden>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const cfg={iceServers:[{urls:"stun:stun.l.google.com:19302"}]};
+const CH=16384,MAX=64*1024*1024;
+let pc,dc,key,sq=Promise.resolve(),rq=Promise.resolve(),nid=1,rec,chunks,tm;
+const rx=new Map();
+const TE=new TextEncoder(),TD=new TextDecoder();
+
+function show(id){["inicio","crear","unir","chat"].forEach(x=>$("#"+x).hidden=x!==id)}
+function b64u(u){let s="";u.forEach(b=>s+=String.fromCharCode(b));return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+function unb64u(t){t=t.replace(/-/g,"+").replace(/_/g,"/");while(t.length%4)t+="=";return Uint8Array.from(atob(t),c=>c.charCodeAt(0))}
+async function pack(d){
+  const raw=TE.encode(JSON.stringify(d));
+  if(window.CompressionStream){
+    const r=await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer();
+    return "z"+b64u(new Uint8Array(r));
+  }
+  return "p"+b64u(raw);
+}
+async function unpack(t){
+  t=t.replace(/\s+/g,"");
+  const u=unb64u(t.slice(1));
+  if(t[0]==="z"){
+    const r=await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer();
+    return JSON.parse(TD.decode(r));
+  }
+  return JSON.parse(TD.decode(u));
+}
+
+/* Capa extra de cifrado AES-256-GCM sobre el cifrado propio de WebRTC */
+async function nuevaClave(){
+  key=await crypto.subtle.generateKey({name:"AES-GCM",length:256},true,["encrypt","decrypt"]);
+  return b64u(new Uint8Array(await crypto.subtle.exportKey("raw",key)));
+}
+async function cargarClave(k){key=await crypto.subtle.importKey("raw",unb64u(k),"AES-GCM",false,["encrypt","decrypt"])}
+async function enc(u){
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const c=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,u));
+  const o=new Uint8Array(12+c.length);o.set(iv);o.set(c,12);return o;
+}
+async function dec(buf){
+  const u=new Uint8Array(buf);
+  return new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv:u.slice(0,12)},key,u.slice(12)));
+}
+
+function listo(){
+  return new Promise(res=>{
+    if(pc.iceGatheringState==="complete")return res();
+    const f=()=>{if(pc.iceGatheringState==="complete"){pc.removeEventListener("icegatheringstatechange",f);res()}};
+    pc.addEventListener("icegatheringstatechange",f);
+    setTimeout(res,5000);
+  });
+}
+
+/* Interfaz del chat */
+function bub(c){const d=document.createElement("div");d.className="m "+c;$("#log").appendChild(d);$("#log").scrollTop=1e9;return d}
+function msg(t,c){bub(c).textContent=t}
+function fill(d,b,k){
+  const e=document.createElement(k==="image"?"img":k);
+  e.src=URL.createObjectURL(b);
+  if(k==="image")e.alt="Imagen";else e.controls=true;
+  if(k==="video")e.playsInline=true;
+  d.prepend(e);$("#log").scrollTop=1e9;
+}
+
+/* Envío: tipo 1 texto, 2 cabecera de archivo, 3 trozo de archivo */
+function send(type,body){
+  sq=sq.then(async()=>{
+    if(!dc||dc.readyState!=="open")return;
+    if(dc.bufferedAmount>1<<20)await new Promise(r=>{dc.bufferedAmountLowThreshold=1<<18;dc.onbufferedamountlow=()=>{dc.onbufferedamountlow=null;r()}});
+    const f=new Uint8Array(1+body.length);f[0]=type;f.set(body,1);
+    dc.send(await enc(f));
+  }).catch(()=>{});
+  return sq;
+}
+async function sendBlob(b,k,name){
+  const id=nid++,d=bub("yo");
+  fill(d,b,k);
+  const p=document.createElement("small");p.textContent="Enviando 0%";d.appendChild(p);
+  await send(2,TE.encode(JSON.stringify({id,name,mime:b.type,size:b.size})));
+  for(let o=0;o<b.size;o+=CH){
+    const part=new Uint8Array(await b.slice(o,o+CH).arrayBuffer());
+    const body=new Uint8Array(4+part.length);
+    new DataView(body.buffer).setUint32(0,id);body.set(part,4);
+    await send(3,body);
+    p.textContent="Enviando "+Math.round(Math.min(o+CH,b.size)/b.size*100)+"%";
+  }
+  p.remove();
+}
+async function recibir(raw){
+  const f=await dec(raw),t=f[0],b=f.subarray(1);
+  if(t===1){msg(TD.decode(b),"el");return}
+  if(t===2){
+    const m=JSON.parse(TD.decode(b));
+    const k=String(m.mime).split("/")[0];
+    if(!["image","video","audio"].includes(k)||!(m.size>0)||m.size>MAX)return;
+    const d=bub("el"),p=document.createElement("small");
+    p.textContent="Recibiendo 0%";d.appendChild(p);
+    rx.set(m.id,{m,k,parts:[],got:0,d,p});
+    return;
+  }
+  if(t===3){
+    const id=new DataView(b.buffer,b.byteOffset).getUint32(0),e=rx.get(id);
+    if(!e)return;
+    const part=b.slice(4);
+    e.parts.push(part);e.got+=part.length;
+    e.p.textContent="Recibiendo "+Math.min(100,Math.round(e.got/e.m.size*100))+"%";
+    if(e.got>=e.m.size){
+      fill(e.d,new Blob(e.parts,{type:e.m.mime}),e.k);
+      e.p.remove();rx.delete(id);
+    }
+  }
+}
+
+/* Conexión */
+function nuevoPc(){
+  pc=new RTCPeerConnection(cfg);
+  pc.onconnectionstatechange=()=>{
+    if(pc.connectionState==="failed"){
+      const m="No se pudo conectar. Revisen que usaron los códigos más recientes e inténtenlo de nuevo.";
+      $("#st").textContent=m;$("#st2").textContent=m;
+    }
+    if(pc.connectionState==="disconnected"||pc.connectionState==="closed")msg("La conexión se cerró.","sys");
+  };
+}
+function canal(ch){
+  dc=ch;ch.binaryType="arraybuffer";
+  ch.onopen=()=>{show("chat");msg("Conectados. Todo va cifrado de extremo a extremo y nadie más puede verlo.","sys")};
+  ch.onmessage=e=>{rq=rq.then(()=>recibir(e.data)).catch(()=>{})};
+  ch.onclose=()=>msg("La otra persona salió del chat.","sys");
+}
+async function copiar(el,btn){
+  try{await navigator.clipboard.writeText(el.value)}catch(e){el.select();document.execCommand("copy")}
+  const t=btn.textContent;btn.textContent="Copiado";setTimeout(()=>btn.textContent=t,1500);
+}
+$("#bCrear").onclick=async()=>{
+  show("crear");nuevoPc();
+  canal(pc.createDataChannel("chat"));
+  const k=await nuevaClave();
+  await pc.setLocalDescription(await pc.createOffer());
+  await listo();
+  $("#cOferta").value=await pack({t:pc.localDescription.type,s:pc.localDescription.sdp,k});
+};
+$("#bUnir").onclick=()=>show("unir");
+$("#copiarO").onclick=()=>copiar($("#cOferta"),$("#copiarO"));
+$("#copiarR").onclick=()=>copiar($("#cRes"),$("#copiarR"));
+$("#bConectar").onclick=async()=>{
+  try{
+    const d=await unpack($("#cResp").value);
+    $("#st").textContent="Conectando…";
+    await pc.setRemoteDescription({type:d.t,sdp:d.s});
+  }catch(e){$("#st").textContent="El código no es válido. Cópialo completo y vuelve a pegarlo."}
+};
+$("#bResp").onclick=async()=>{
+  try{
+    const d=await unpack($("#cIn").value);
+    await cargarClave(d.k);
+    nuevoPc();
+    pc.ondatachannel=e=>canal(e.channel);
+    await pc.setRemoteDescription({type:d.t,sdp:d.s});
+    await pc.setLocalDescription(await pc.createAnswer());
+    $("#st2").textContent="Generando código…";
+    await listo();
+    $("#cRes").value=await pack({t:pc.localDescription.type,s:pc.localDescription.sdp});
+    $("#rBox").hidden=false;
+    $("#st2").textContent="Esperando a que la otra persona pegue tu código…";
+  }catch(e){$("#st2").textContent="El código no es válido. Cópialo completo y vuelve a pegarlo."}
+};
+
+/* Texto, adjuntos y notas de voz */
+$("#f").addEventListener("submit",()=>{
+  const t=$("#txt").value.trim();
+  if(!t||!dc||dc.readyState!=="open")return;
+  send(1,TE.encode(t));msg(t,"yo");$("#txt").value="";
+});
+$("#adj").onclick=()=>$("#fi").click();
+$("#fi").onchange=e=>{
+  for(const f of e.target.files){
+    const k=f.type.split("/")[0];
+    if(!["image","video","audio"].includes(k))continue;
+    if(f.size>MAX){msg("«"+f.name+"» pesa más de 64 MB.","sys");continue}
+    sendBlob(f,k,f.name);
+  }
+  e.target.value="";
+};
+$("#mic").onclick=async()=>{
+  if(rec){rec.stop();return}
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({audio:true});
+    const mt=["audio/webm;codecs=opus","audio/webm","audio/mp4"].find(x=>MediaRecorder.isTypeSupported(x))||"";
+    rec=new MediaRecorder(s,mt?{mimeType:mt}:{});chunks=[];
+    rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+    rec.onstop=()=>{
+      s.getTracks().forEach(x=>x.stop());clearInterval(tm);
+      $("#mic").classList.remove("rec");$("#rt").hidden=true;
+      const b=new Blob(chunks,{type:(rec.mimeType||mt||"audio/webm").split(";")[0]});
+      rec=null;
+      if(b.size)sendBlob(b,"audio","nota-de-voz");
+    };
+    rec.start();
+    const t0=Date.now();
+    $("#mic").classList.add("rec");$("#rt").hidden=false;$("#rt").textContent="0:00";
+    tm=setInterval(()=>{const n=Math.floor((Date.now()-t0)/1000);$("#rt").textContent=Math.floor(n/60)+":"+String(n%60).padStart(2,"0")},500);
+  }catch(e){msg("No se pudo usar el micrófono. Revisa el permiso de la app.","sys")}
+};
+</script>
+</body>
+</html>
